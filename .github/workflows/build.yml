@@ -1,12 +1,19 @@
-name: Build SpudPvP
+name: Build and Publish SpudPvP
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -25,9 +32,29 @@ jobs:
           gradle-version: '9.6.1'
       - name: Compile mod
         run: gradle build --no-daemon
-      - name: Upload JAR
+      - name: Upload JAR artifact
         uses: actions/upload-artifact@v4
         with:
           name: spudpvp-jar
           path: build/libs/*.jar
           if-no-files-found: error
+      - name: Publish downloadable release
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: SpudPvP latest build
+          body: "Automated SpudPvP build for Minecraft 1.21.11. Requires Fabric Loader and Fabric API."
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          overwrite_files: true
+          files: build/libs/*-1.0.0.jar
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload website
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - name: Deploy website
+        id: deployment
+        uses: actions/deploy-pages@v4
