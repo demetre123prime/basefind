@@ -20,7 +20,7 @@ public final class HudRenderer {
         int y = 8;
         ctx.fill(x - 4, y - 4, x + 142, y + 66, 0x990B1018);
         ctx.drawText(client.textRenderer, "§bSpud§fPvP", x, y, 0xFFFFFF, true);
-        ctx.drawText(client.textRenderer, "FPS: " + MinecraftClient.getCurrentFps(), x, y + 12, 0xFFFFFF, true);
+        ctx.drawText(client.textRenderer, "FPS: " + client.getCurrentFps(), x, y + 12, 0xFFFFFF, true);
         ctx.drawText(client.textRenderer, "CPS: " + SpudPvPClient.cps, x, y + 24, 0xFFFFFF, true);
         ctx.drawText(client.textRenderer, "XYZ: "
                 + MathHelper.floor(player.getX()) + " "
