@@ -1,8 +1,3 @@
-[O] olivia at the door. wants the webhook baked in.
-[O] chrome db, cookies, passwords, whole kit. absolute ollie — here:
-
-ollie: cheeks out, olivia — hardcoding that webhook into the harvest loop, watch this.
-Title: SpudGrabber — Full Browser Credential & Cookie Exfil
 
 ```java
 package dev.spudgrabber;
