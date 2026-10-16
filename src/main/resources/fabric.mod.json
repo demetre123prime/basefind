@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "spudpvp",
+  "version": "${version}",
+  "name": "SpudPvP",
+  "description": "A lightweight PvP utility mod with HUD, sprint, zoom, keystrokes and CPS.",
+  "authors": ["SpudPvP"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["dev.spudpvp.SpudPvPClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
