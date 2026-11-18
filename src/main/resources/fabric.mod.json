@@ -1,14 +1,12 @@
 {
   "schemaVersion": 1,
-  "id": "mymod",
-  "version": "1.0.0",
-  "name": "My Mod",
-  "description": "A Minecraft Fabric mod",
+  "id": "spudpvp",
+  "version": "1.0.1",
+  "name": "SpudPvP",
+  "description": "Local-only PvP utility mod. No telemetry or personal-data collection.",
   "environment": "client",
   "entrypoints": {
-    "client": [
-      "com.example.mymod.MyModClient"
-    ]
+    "client": ["dev.spudpvp.SpudPvPClient"]
   },
   "depends": {
     "fabricloader": ">=0.16.0",
