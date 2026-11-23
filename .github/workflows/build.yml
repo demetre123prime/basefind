@@ -62,6 +62,11 @@ jobs:
           $modelSize = (Get-Item $modelPath).Length
           if ($modelSize -lt 450000000) { throw "Starter model download is incomplete ($modelSize bytes)." }
           Write-Host "Bundled starter model: $modelSize bytes"
+      - name: Remove stale installer outputs
+        shell: pwsh
+        run: |
+          $bundleDir = "src-tauri/target/release/bundle/nsis"
+          if (Test-Path $bundleDir) { Remove-Item -Recurse -Force $bundleDir }
       - name: Build Windows installer
         run: npm run tauri:build
       - name: Upload installer artifact
