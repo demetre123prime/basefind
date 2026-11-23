@@ -15,7 +15,7 @@ document.querySelector('#app').innerHTML = `
         <span class="privacy-dot"></span>
         <div><b>Private by design</b><small>Inference stays on this PC</small></div>
       </div>
-      <div class="side-footer">NEXCODE DESKTOP · 0.2</div>
+      <div class="side-footer">NEXCODE DESKTOP · 0.3</div>
     </aside>
 
     <main class="main">
@@ -133,7 +133,7 @@ function formatBytes(bytes) {
     : `${Math.round(bytes / 1_000_000)} MB`;
 }
 
-async function refreshModels() {
+async function refreshModels(keepOpen = false) {
   const models = await invoke('available_models');
   const loaded = models.find(model => model.loaded);
   setLoaded(loaded?.name || null);
@@ -165,7 +165,7 @@ async function refreshModels() {
           setModelStatus('Downloading optional model securely…', true);
           await invoke('download_model', { modelId: id });
           setModelStatus('Download complete. It is ready to load.');
-          await refreshModels();
+          await refreshModels(true);
         } else {
           setModelStatus('Loading model into memory…', true);
           await invoke('load_local_model', { modelId: id });
@@ -188,7 +188,7 @@ async function refreshModels() {
     });
   });
 
-  if (loaded) {
+  if (loaded && !keepOpen) {
     modelPanel.classList.add('hidden');
     modelStatus.textContent = 'A local model is loaded and ready.';
   } else {
