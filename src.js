@@ -272,6 +272,12 @@ async function startFirstRunSetup() {
     setupPercent.textContent = 'RETRY';
     setModelStatus(`Starter setup could not finish: ${String(error)}`, false);
     modelPanel.classList.remove('hidden');
+    // Keep the model cards available so the user can retry or choose another model.
+    try {
+      await refreshModels(true);
+    } catch {
+      // Preserve the original setup error if the model list cannot be refreshed.
+    }
   } finally {
     busy = false;
     setLoaded(loadedModel);
