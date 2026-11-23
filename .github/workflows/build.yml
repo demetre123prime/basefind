@@ -6,6 +6,9 @@ on:
     paths-ignore: ['README.md']
 permissions:
   contents: write
+concurrency:
+  group: nexcode-windows-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -35,6 +38,16 @@ jobs:
           $stream.Close()
           $g.Dispose()
           $bmp.Dispose()
+      - name: Cache Rust dependencies and build output
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: nexcode-cargo-${{ runner.os }}-${{ hashFiles('src-tauri/Cargo.toml') }}
+          restore-keys: |
+            nexcode-cargo-${{ runner.os }}-
       - name: Install dependencies
         run: npm install
       - name: Build Windows installer
