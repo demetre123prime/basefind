@@ -321,6 +321,7 @@ document.querySelector('#chatForm').addEventListener('submit', async event => {
   promptBox.value = '';
   addMessage('user', text);
   const answer = addMessage('assistant', 'Generating locally…');
+  answer.classList.add('streaming');
   activeAnswer = answer;
   busy = true;
   setLoaded(loadedModel);
@@ -331,6 +332,7 @@ document.querySelector('#chatForm').addEventListener('submit', async event => {
   } catch (error) {
     answer.textContent = `Local AI error: ${String(error)}`;
   } finally {
+    answer.classList.remove('streaming');
     activeAnswer = null;
     busy = false;
     setLoaded(loadedModel);
