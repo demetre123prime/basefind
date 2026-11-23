@@ -81,6 +81,7 @@ const runtimeBadge = document.querySelector('#runtimeBadge');
 const sendButton = document.querySelector('#send');
 let loadedModel = null;
 let busy = false;
+let activeAnswer = null;
 
 function addMessage(role, text) {
   document.querySelector('#welcome')?.remove();
@@ -246,22 +247,30 @@ document.querySelector('#chatForm').addEventListener('submit', async event => {
 
   promptBox.value = '';
   addMessage('user', text);
-  const answer = addMessage('assistant', 'Thinking on your device…');
+  const answer = addMessage('assistant', 'Generating locally…');
+  activeAnswer = answer;
   busy = true;
   setLoaded(loadedModel);
 
   try {
     const result = await invoke('chat_local', { prompt: text });
-    answer.textContent = result || '(The model returned an empty response.)';
+    if (!answer.textContent.trim()) answer.textContent = result || '(The model returned an empty response.)';
   } catch (error) {
     answer.textContent = `Local AI error: ${String(error)}`;
   } finally {
+    activeAnswer = null;
     busy = false;
     setLoaded(loadedModel);
     promptBox.focus();
     chat.scrollTop = chat.scrollHeight;
   }
 });
+
+listen('assistant-delta', event => {
+  if (!activeAnswer) return;
+  activeAnswer.textContent += event.payload.text || '';
+  chat.scrollTop = chat.scrollHeight;
+}).catch(() => {});
 
 listen('model-download-progress', event => {
   const progress = event.payload;
