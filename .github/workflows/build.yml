@@ -50,6 +50,18 @@ jobs:
             nexcode-cargo-${{ runner.os }}-
       - name: Install dependencies
         run: npm install
+      - name: Download bundled 0.5B starter model
+        shell: pwsh
+        run: |
+          $modelDir = "src-tauri/resources/models"
+          New-Item -ItemType Directory -Force $modelDir | Out-Null
+          $modelPath = Join-Path $modelDir "qwen2.5-coder-0.5b-instruct-q4_k_m.gguf"
+          $modelUrl = "https://huggingface.co/Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF/resolve/main/qwen2.5-coder-0.5b-instruct-q4_k_m.gguf"
+          curl.exe --location --fail --retry 3 --retry-delay 5 $modelUrl --output $modelPath
+          if ($LASTEXITCODE -ne 0) { throw "Could not download the 491 MB Qwen starter model." }
+          $modelSize = (Get-Item $modelPath).Length
+          if ($modelSize -lt 450000000) { throw "Starter model download is incomplete ($modelSize bytes)." }
+          Write-Host "Bundled starter model: $modelSize bytes"
       - name: Build Windows installer
         run: npm run tauri:build
       - name: Upload installer artifact
@@ -62,8 +74,8 @@ jobs:
       - name: Publish direct EXE download
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: nexcode-v0.2.0-build${{ github.run_number }}
-          name: NexCode v0.2.0 for Windows · Build ${{ github.run_number }}
+          tag_name: nexcode-v0.3.0-build${{ github.run_number }}
+          name: NexCode v0.3.0 for Windows · Build ${{ github.run_number }}
           make_latest: true
           files: src-tauri/target/release/bundle/nsis/*.exe
           fail_on_unmatched_files: true
