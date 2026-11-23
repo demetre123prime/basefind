@@ -250,8 +250,13 @@ async fn load_local_model(
     .map_err(|error| format!("Model loading task failed: {error}"))?
 }
 
+#[derive(Clone, Serialize)]
+struct StreamDelta {
+    text: String,
+}
+
 #[tauri::command]
-async fn chat_local(prompt: String, state: State<'_, AppState>) -> Result<String, String> {
+async fn chat_local(app: AppHandle, prompt: String, state: State<'_, AppState>) -> Result<String, String> {
     let prompt = prompt.trim().to_string();
     if prompt.is_empty() {
         return Err("Enter a message first".into());
@@ -279,12 +284,23 @@ async fn chat_local(prompt: String, state: State<'_, AppState>) -> Result<String
 
         ingest_result.map_err(|error| format!("Could not add your message to the context: {error}"))?;
 
+        let app_for_stream = app.clone();
         let turn = chat
-            .complete(&GenerateOpts {
-                max_tokens: 384,
-                temperature: 0.2,
-                ..GenerateOpts::default()
-            })
+            .stream_text(
+                &GenerateOpts {
+                    max_tokens: 384,
+                    temperature: 0.2,
+                    ..GenerateOpts::default()
+                },
+                |chunk| {
+                    let _ = app_for_stream.emit(
+                        "assistant-delta",
+                        StreamDelta {
+                            text: chunk.to_string(),
+                        },
+                    );
+                },
+            )
             .map_err(|error| format!("Local generation failed: {error}"))?;
 
         runtime.started = true;
