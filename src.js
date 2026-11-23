@@ -36,9 +36,19 @@ document.querySelector('#app').innerHTML = `
           <div>
             <div class="eyebrow">LOCAL MODEL LIBRARY</div>
             <h2>Choose your AI model</h2>
-            <p>Download once, then chat offline. Model files stay on this device.</p>
+            <p>The small starter model comes inside setup. The larger model is optional.</p>
           </div>
           <button class="panel-close" id="closeModels" aria-label="Hide model library">×</button>
+        </div>
+        <div id="starterSetup" class="starter-setup hidden">
+          <div class="setup-orb"><span>✳</span></div>
+          <div class="setup-copy">
+            <div class="setup-kicker"><i></i> FIRST-RUN SETUP</div>
+            <h3>Preparing your local AI</h3>
+            <p>The included 491 MB starter model is being loaded on this device.</p>
+            <div class="setup-progress"><span id="setupProgressFill"></span></div>
+          </div>
+          <div class="setup-percent" id="setupPercent">READY</div>
         </div>
         <div id="modelCards" class="model-grid">
           <div class="loading-card">Loading available models…</div>
@@ -82,6 +92,7 @@ const sendButton = document.querySelector('#send');
 let loadedModel = null;
 let busy = false;
 let activeAnswer = null;
+let starterReady = false;
 
 function addMessage(role, text) {
   document.querySelector('#welcome')?.remove();
@@ -127,9 +138,9 @@ async function refreshModels() {
   const loaded = models.find(model => model.loaded);
   setLoaded(loaded?.name || null);
   modelCards.innerHTML = models.map(model => `
-    <article class="model-card ${model.loaded ? 'selected' : ''}">
+    <article class="model-card ${model.loaded ? 'selected' : ''} ${model.bundled ? 'starter-card' : 'optional-card'}">
       <div class="model-topline">
-        <span class="model-chip">${model.id.includes('05b') ? 'LOW MEMORY' : 'MORE CAPABLE'}</span>
+        <span class="model-chip">${model.bundled ? 'INCLUDED IN SETUP' : 'OPTIONAL UPGRADE'}</span>
         <span class="model-size">${model.sizeLabel}</span>
       </div>
       <h3>${model.name}</h3>
@@ -137,7 +148,7 @@ async function refreshModels() {
       <div class="model-meta"><span>◈ ${model.ramLabel}</span><span>GGUF · Q4_K_M</span></div>
       <progress id="progress-${model.id}" value="0" max="100" class="download-progress"></progress>
       <button class="model-action ${model.loaded ? 'is-loaded' : ''}" data-action="${model.installed ? 'load' : 'download'}" data-id="${model.id}" ${busy ? 'disabled' : ''}>
-        ${model.loaded ? '✓ Loaded' : model.installed ? 'Load model' : `Download · ${model.sizeLabel}`}
+        ${model.loaded ? '✓ Loaded' : model.installed ? (model.bundled ? 'Load starter model' : 'Load model') : `Download · ${model.sizeLabel}`}
       </button>
     </article>
   `).join('');
@@ -146,26 +157,28 @@ async function refreshModels() {
     button.addEventListener('click', async () => {
       const id = button.dataset.id;
       const action = button.dataset.action;
+      busy = true;
       button.disabled = true;
+      setLoaded(loadedModel);
       try {
         if (action === 'download') {
-          modelStatus.textContent = 'Starting secure model download…';
+          setModelStatus('Downloading optional model securely…', true);
           await invoke('download_model', { modelId: id });
-          modelStatus.textContent = 'Download complete. Load the model to begin.';
+          setModelStatus('Download complete. It is ready to load.');
           await refreshModels();
         } else {
-          busy = true;
-          modelStatus.textContent = 'Loading model into memory…';
+          setModelStatus('Loading model into memory…', true);
           await invoke('load_local_model', { modelId: id });
+          starterReady = id === 'qwen-coder-05b' || starterReady;
           await refreshModels();
           modelPanel.classList.add('hidden');
-          modelStatus.textContent = 'Ready. You can now chat offline.';
+          setModelStatus('Ready. Your AI is running locally.');
           chat.innerHTML = '';
           showWelcome();
           promptBox.focus();
         }
       } catch (error) {
-        modelStatus.textContent = `Error: ${String(error)}`;
+        setModelStatus(`Setup error: ${String(error)}`);
         button.disabled = false;
       } finally {
         busy = false;
@@ -204,6 +217,66 @@ function showWelcome() {
       promptBox.focus();
     });
   });
+}
+
+function setModelStatus(message, active = false) {
+  modelStatus.textContent = message;
+  modelStatus.classList.toggle('working', active);
+}
+
+async function startFirstRunSetup() {
+  const starterId = 'qwen-coder-05b';
+  const setupPanel = document.querySelector('#starterSetup');
+  const setupFill = document.querySelector('#setupProgressFill');
+  const setupPercent = document.querySelector('#setupPercent');
+
+  try {
+    let models = await invoke('available_models');
+    const starter = models.find(model => model.id === starterId);
+    if (!starter) throw new Error('Starter model is missing from the model library.');
+
+    if (!starter.installed) {
+      modelPanel.classList.remove('hidden');
+      setupPanel.classList.remove('hidden');
+      setupPercent.textContent = 'DOWNLOAD';
+      setModelStatus('Starter model not found in setup. Downloading it now…', true);
+      await invoke('download_model', { modelId: starterId });
+    }
+
+    models = await invoke('available_models');
+    const ready = models.find(model => model.id === starterId);
+    if (!ready?.installed) throw new Error('Starter model could not be installed.');
+
+    busy = true;
+    modelPanel.classList.remove('hidden');
+    setupPanel.classList.remove('hidden');
+    setupPanel.classList.add('is-loading');
+    setupPercent.textContent = 'LOADING';
+    setupFill.style.width = '38%';
+    setModelStatus('Loading the included starter model into memory…', true);
+    setLoaded(null);
+
+    await invoke('load_local_model', { modelId: starterId });
+
+    setupFill.style.width = '100%';
+    setupPanel.classList.remove('is-loading');
+    setupPanel.classList.add('is-complete');
+    setupPercent.textContent = 'READY';
+    starterReady = true;
+    await refreshModels();
+    setModelStatus('Starter model is ready. NexCode is now running fully locally.');
+    chat.innerHTML = '';
+    showWelcome();
+  } catch (error) {
+    setupPanel.classList.remove('hidden', 'is-loading');
+    setupPercent.textContent = 'RETRY';
+    setModelStatus(`Starter setup could not finish: ${String(error)}`, false);
+    modelPanel.classList.remove('hidden');
+  } finally {
+    busy = false;
+    setLoaded(loadedModel);
+    modelCards.querySelectorAll('button[data-action]').forEach(button => button.disabled = false);
+  }
 }
 
 document.querySelector('#manageModels').addEventListener('click', () => {
@@ -279,9 +352,15 @@ listen('model-download-progress', event => {
     ? Math.min(100, Math.round(progress.downloaded / progress.total * 100))
     : 0;
   if (bar) bar.value = percent;
-  modelStatus.textContent = `Downloading model… ${percent}% · ${formatBytes(progress.downloaded)} / ${formatBytes(progress.total)}`;
+  const fill = document.querySelector('#setupProgressFill');
+  const starterPercent = document.querySelector('#setupPercent');
+  if (progress.modelId === 'qwen-coder-05b' && fill) {
+    fill.style.width = `${percent}%`;
+    if (starterPercent) starterPercent.textContent = `${percent}%`;
+  }
+  setModelStatus(`Downloading model… ${percent}% · ${formatBytes(progress.downloaded)} / ${formatBytes(progress.total)}`, true);
 }).catch(() => {});
 
-refreshModels().catch(error => {
-  modelStatus.textContent = `Could not read local model library: ${String(error)}`;
+startFirstRunSetup().catch(error => {
+  setModelStatus(`Could not start local setup: ${String(error)}`);
 });
