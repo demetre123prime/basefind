@@ -3,3 +3,6 @@ dist
 src-tauri/target
 src-tauri/gen
 .env
+
+src-tauri/resources/models/*.gguf
+src-tauri/resources/models/*.part
