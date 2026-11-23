@@ -8,7 +8,7 @@ permissions:
   contents: write
 concurrency:
   group: nexcode-windows-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   build-windows:
     runs-on: windows-latest
