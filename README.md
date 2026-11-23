@@ -1,56 +1,70 @@
 # NexCode
 
-NexCode is a local-first Windows coding assistant. The inference engine runs in Rust on your PC; model weights are separate downloads, not part of the installer.
+NexCode is a local-first Windows coding assistant. The inference engine is written in Rust and runs on the user's PC. It uses the open-source [Cera](https://github.com/hyeons-lab/cera) inference engine and GGUF model files.
 
-## What works in this build
+## First install
 
-- Download and manage small GGUF coding models inside the app.
-- Run inference locally with the Rust-native [Cera](https://github.com/hyeons-lab/cera) engine.
-- CPU inference with SIMD acceleration where the processor supports it.
-- GGUF memory-mapped model loading to avoid copying the entire model file into a second in-memory buffer.
-- A reduced 2,048-token context and 128-token prompt micro-batches to keep the first release suitable for lower-memory machines.
-- No cloud API key, subscription, or per-message fee.
-- After a model is downloaded, chat inference works offline. The app does not send prompts to a hosted AI service.
+The Windows setup EXE includes the **Qwen2.5-Coder 0.5B Q4_K_M starter model (491 MB)**. This makes the installer roughly 500 MB larger, but the user does not need to download the starter model separately. After installation, NexCode automatically loads the bundled starter model on first launch.
 
-## Models
+The app offers an optional **Qwen2.5-Coder 1.5B Q4_K_M model (~1.12 GB)** in Manage models. It is downloaded only if the user chooses it.
 
-The model library currently offers Qwen2.5-Coder Instruct in two sizes. Both are published by Qwen under Apache-2.0 model licensing and are downloaded from the official Qwen Hugging Face repositories.
+## What works
 
-| Model | Quantization | Download size (approx.) | Intended use |
-|---|---|---:|---|
-| Qwen2.5-Coder 0.5B | Q4_K_M | 490 MB | Low-memory PCs and short coding tasks |
-| Qwen2.5-Coder 1.5B | Q4_K_M | 1.1 GB | PCs with more available RAM |
+- Local text generation using Cera, a Rust-native inference engine.
+- GGUF model loading with memory mapping.
+- CPU inference with SIMD paths where supported by the processor.
+- A reduced 2,048-token context and 128-token prompt micro-batches to limit memory use on lower-end PCs.
+- Token-by-token response streaming in the UI.
+- Automatic first-run loading of the bundled 0.5B starter model.
+- Optional in-app download and loading of the 1.5B model.
+- No cloud API key, subscription, or usage fee. Once installed, prompts and model inference stay on the device.
 
-The 0.5B model is the lighter option, not a high-end coding model. Model speed and quality depend on your CPU, available RAM, context size, and the task. A model download requires an internet connection once; local generation does not.
+The 0.5B model is a lightweight starter, not a high-end coding model. Smaller models have limited coding ability compared with larger models. Actual RAM use and speed depend on the device and prompt length.
+
+## Models and licences
+
+| Model | Size | Included? | Use |
+|---|---:|---|---|
+| Qwen2.5-Coder 0.5B Instruct Q4_K_M | 491 MB | Included in Windows setup | Starter model, lower-memory systems |
+| Qwen2.5-Coder 1.5B Instruct Q4_K_M | 1.12 GB | Optional download | More capable model for PCs with more available RAM |
+
+The model files are distributed from the official Qwen Hugging Face GGUF repositories:
+- 0.5B: https://huggingface.co/Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF
+- 1.5B: https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF
+
+Qwen's model repositories include their licence notice. Preserve the original model licence and notices when redistributing model weights.
 
 ## Build on Windows
 
 Requirements:
 - Windows 10 or 11, 64-bit
 - Node.js 20+
-- Rust 1.94+
+- Rust stable compatible with Cera 0.7.5 (Rust 1.94+)
 - Microsoft C++ Build Tools and WebView2 runtime
+- Internet connection for fetching the bundled starter model during packaging
 
-Build commands:
+Prepare the bundled model before building:
 
 ```powershell
+New-Item -ItemType Directory -Force src-tauri/resources/models
+curl.exe -L --fail --retry 3 "https://huggingface.co/Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF/resolve/main/qwen2.5-coder-0.5b-instruct-q4_k_m.gguf" -o "src-tauri/resources/models/qwen2.5-coder-0.5b-instruct-q4_k_m.gguf"
 npm install
 npm run tauri:build
 ```
 
-The NSIS installer is generated under `src-tauri/target/release/bundle/nsis/`. GitHub Actions also publishes a Windows installer under the repository's Releases page.
+The NSIS installer is generated under `src-tauri/target/release/bundle/nsis/`. GitHub Actions downloads the starter model, packages it into the setup EXE, and publishes the installer under Releases.
 
 ## Local storage and privacy
 
-Downloaded model files are stored in NexCode's application data folder under `models`. Chat prompts and model responses are processed by the local Rust runtime. The only network transfer in local mode is the model download from Hugging Face. Do not add confidential material to chats unless you are comfortable storing it on this PC.
+The bundled 0.5B model is installed in the app's resource directory. The optional 1.5B model is stored under NexCode's application data folder in `models`. Prompts and responses are processed by the local Rust runtime. The only normal network access is the optional model download from Hugging Face. Once a model is present, generation works offline.
 
-## Open-source components and model notices
+## Open-source components
 
 - **Cera**: Rust inference engine integrated as a Cargo dependency. Licensed under Apache-2.0 OR MIT. Source: https://github.com/hyeons-lab/cera
-- **Qwen2.5-Coder Instruct GGUF**: model weights published by Qwen under Apache-2.0. The model files are not bundled with NexCode; they are fetched from Qwen's official Hugging Face repositories when a user selects Download.
+- **Qwen2.5-Coder**: model weights published by Qwen. Refer to the official model repository for the precise licence and redistribution notices.
 
-NexCode integrates Cera's public Rust library; it does not copy or rebrand Cera's source code. Keep the upstream licenses and model license notices with any redistribution.
+NexCode integrates Cera's public Rust library. It does not copy or rebrand Cera's source code.
 
 ## Project status
 
-This is an early local-chat foundation. It does not yet include autonomous file editing, terminal execution, repository indexing, multi-agent workflows, or donations. Those should be added in later updates with explicit user approval for any file or command actions.
+This is an early local-chat foundation. It does not yet include autonomous file editing, terminal execution, repository indexing, multi-agent workflows, or donations. These features need separate implementation and careful user-controlled permissions.
