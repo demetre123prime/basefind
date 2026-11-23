@@ -1,11 +1,8 @@
-# SpudPvP
+# NexCode
 
-A client-side Fabric utility mod for Minecraft Java 1.21.11.
+Windows desktop AI workspace using your own OpenAI-compatible API provider. DeepSeek defaults: endpoint https://api.deepseek.com, model deepseek-chat.
 
-Features include a HUD (FPS/CPS/coordinates/sprint status), toggle sprint, hold-to-zoom, keystrokes, and configurable keybinds.
+## Build on Windows
+Install Node.js 20+, Rust, and Microsoft C++ Build Tools. Run npm install, then npm run tauri:build. The NSIS installer is produced under src-tauri/target/release/bundle/nsis/.
 
-## Build
-
-Requires Java 21. Run `gradle build` from the repository root. The JAR is output to `build/libs/`.
-
-This project has not yet been verified in-game. See the Actions tab for CI build results.
+Open Settings to enter the provider endpoint, model, and API key. The key is stored in Windows Credential Manager. API usage is billed directly by your provider. NexCode currently does not process payments or take a percentage of API usage. Never commit API keys.
