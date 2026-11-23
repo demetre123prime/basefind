@@ -320,7 +320,7 @@ document.querySelector('#chatForm').addEventListener('submit', async event => {
 
   promptBox.value = '';
   addMessage('user', text);
-  const answer = addMessage('assistant', 'Generating locally…');
+  const answer = addMessage('assistant', '');
   answer.classList.add('streaming');
   activeAnswer = answer;
   busy = true;
