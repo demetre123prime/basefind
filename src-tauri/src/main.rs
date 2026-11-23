@@ -17,6 +17,7 @@ struct ModelSpec {
     approximate_bytes: u64,
     size_label: &'static str,
     ram_label: &'static str,
+    bundled: bool,
 }
 
 const MODELS: &[ModelSpec] = &[
@@ -29,6 +30,7 @@ const MODELS: &[ModelSpec] = &[
         approximate_bytes: 491_000_000,
         size_label: "~490 MB",
         ram_label: "4 GB RAM class",
+        bundled: true,
     },
     ModelSpec {
         id: "qwen-coder-15b",
@@ -39,6 +41,7 @@ const MODELS: &[ModelSpec] = &[
         approximate_bytes: 1_120_000_000,
         size_label: "~1.1 GB",
         ram_label: "8 GB+ RAM recommended",
+        bundled: false,
     },
 ];
 
@@ -52,6 +55,7 @@ struct LocalRuntime {
 
 struct AppState {
     model_dir: PathBuf,
+    bundled_starter: PathBuf,
     runtime: Arc<Mutex<LocalRuntime>>,
 }
 
@@ -64,6 +68,7 @@ struct ModelInfo {
     size_label: String,
     ram_label: String,
     installed: bool,
+    bundled: bool,
     loaded: bool,
 }
 
@@ -82,14 +87,23 @@ fn model_spec(id: &str) -> Result<&'static ModelSpec, String> {
         .ok_or_else(|| "Unknown model selection".to_string())
 }
 
-fn model_info(spec: &ModelSpec, model_dir: &PathBuf, loaded_id: Option<&str>) -> ModelInfo {
+fn model_path_for(spec: &ModelSpec, state: &AppState) -> PathBuf {
+    if spec.bundled && state.bundled_starter.is_file() {
+        state.bundled_starter.clone()
+    } else {
+        state.model_dir.join(spec.file_name)
+    }
+}
+
+fn model_info(spec: &ModelSpec, state: &AppState, loaded_id: Option<&str>) -> ModelInfo {
     ModelInfo {
         id: spec.id.to_string(),
         name: spec.name.to_string(),
         description: spec.description.to_string(),
         size_label: spec.size_label.to_string(),
         ram_label: spec.ram_label.to_string(),
-        installed: model_dir.join(spec.file_name).is_file(),
+        installed: model_path_for(spec, state).is_file(),
+        bundled: spec.bundled,
         loaded: loaded_id == Some(spec.id),
     }
 }
@@ -124,7 +138,7 @@ fn available_models(state: State<'_, AppState>) -> Vec<ModelInfo> {
 
     MODELS
         .iter()
-        .map(|spec| model_info(spec, &state.model_dir, loaded_id.as_deref()))
+        .map(|spec| model_info(spec, &state, loaded_id.as_deref()))
         .collect()
 }
 
@@ -137,7 +151,7 @@ async fn download_model(
     let spec = model_spec(&model_id)?;
     let destination = state.model_dir.join(spec.file_name);
 
-    if destination.is_file() {
+    if model_path_for(spec, &state).is_file() {
         return Ok(());
     }
 
@@ -159,6 +173,7 @@ async fn download_model(
         .content_length()
         .unwrap_or(spec.approximate_bytes);
     let temporary = destination.with_extension("gguf.part");
+    let _ = tokio::fs::remove_file(&temporary).await;
     let mut file = tokio::fs::File::create(&temporary)
         .await
         .map_err(|error| format!("Could not create the model file: {error}"))?;
@@ -220,7 +235,7 @@ async fn load_local_model(
     state: State<'_, AppState>,
 ) -> Result<String, String> {
     let spec = model_spec(&model_id)?;
-    let model_path = state.model_dir.join(spec.file_name);
+    let model_path = model_path_for(spec, &state);
 
     if !model_path.is_file() {
         return Err("Download this model before loading it".into());
@@ -340,8 +355,14 @@ fn main() {
         .setup(|app| {
             let model_dir = app.path().app_data_dir()?.join("models");
             std::fs::create_dir_all(&model_dir)?;
+            let bundled_starter = app
+                .path()
+                .resource_dir()?
+                .join("models")
+                .join("qwen2.5-coder-0.5b-instruct-q4_k_m.gguf");
             app.manage(AppState {
                 model_dir,
+                bundled_starter,
                 runtime: Arc::new(Mutex::new(LocalRuntime::default())),
             });
             Ok(())
